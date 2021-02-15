@@ -1,5 +1,5 @@
 # Carla-Lane-Detection-Dataset-Generation
-As part of a project in our university, it was our task to implement an agent in CARLA-Simulator, which automomously collects image and label data to generate a dataset.
+As part of a project in our university, it was our task to implement an agent in CARLA-Simulator, which autonomously collects image and label data to generate a dataset.
 This can be used later to train a Deep Convolutional Neural Network, which is able to detect lanemarkings on a road.
 
 The overall project is split up into two parts:

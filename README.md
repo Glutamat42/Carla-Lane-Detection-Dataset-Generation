@@ -1,10 +1,8 @@
-<<<<<<< HEAD
-
 # Carla-Lane-Detection-Dataset-Generation
 As part of a project in our university, it was our task to implement an agent in CARLA-Simulator, which autonomously collects image and label data to generate a dataset.
 This can be used later to train a Deep Convolutional Neural Network, which is able to detect lanemarkings on a road.
 
-![preview image](docs/carla.jpg "carla")
+![preview image](docs/carla.png "carla")
 
 The overall project is split up into two parts:
 
@@ -46,7 +44,6 @@ The overall project is split up into two parts:
 This repository consists of 2 parts:
 - Collect data in CARLA by executing `fast_lane_detection.py`
 - Generate a dataset with the collected data `dataset_generator.py`
->>>>>>> 998ca97fa0f3701b1290bd3bcfa18f714b2ba58c
 
 ## Further documentation
 For any details, please refer to the **full documentation** in the /docs directory.

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 
 # Carla-Lane-Detection-Dataset-Generation
 As part of a project in our university, it was our task to implement an agent in CARLA-Simulator, which autonomously collects image and label data to generate a dataset.
@@ -31,6 +32,21 @@ All the raw images and labels are then converted to .jpg images and .json labels
 
 3. Execute and run `image_to_video.py`.  (Optionally)
 After generating the dataset, the images can then be converted to a video. This might be helpful, if you want to check your images and labels for errors.
+=======
+# Carla-Lane-Detection-Dataset-Generation
+As part of a project in our university, it was our task to implement an agent in CARLA-Simulator, which autonomously collects image and label data to generate a dataset.
+This can be used later to train a Deep Convolutional Neural Network, which is able to detect lanemarkings on a road.
+
+The overall project is split up into two parts:
+
+- The first part covers how to create and generate a dataset. It's what this repository is used for. 
+- The second part covers the training and testing of a Deep Convolutional Neural Network, which is able to detect lanemarkings on a road. It's what [this repository](https://github.com/Glutamat42/Ultra-Fast-Lane-Detection) is used for.
+
+## Project overview
+This repository consists of 2 parts:
+- Collect data in CARLA by executing `fast_lane_detection.py`
+- Generate a dataset with the collected data `dataset_generator.py`
+>>>>>>> 998ca97fa0f3701b1290bd3bcfa18f714b2ba58c
 
 ## Further documentation
 For any details, please refer to the **full documentation** in the /docs directory.

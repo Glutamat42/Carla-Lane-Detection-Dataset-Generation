@@ -112,6 +112,7 @@ def should_quit():
         elif event.type == pygame.KEYUP:
             if event.key == pygame.K_ESCAPE:
                 return True
+
     return False
 
 
@@ -189,18 +190,18 @@ class CarlaGame():
         self.clock = pygame.time.Clock()
         
         self.client = carla.Client('localhost', 2000)
-        self.client.set_timeout(25.0)
+        self.client.set_timeout(30.0)
         
         self.world = self.client.load_world(cfg.CARLA_TOWN)
-        #self.world = self.client.get_world()
         self.map = self.world.get_map()
+        
+        # Hide all objects on the map and show street only
+        # self.world.unload_map_layer(carla.MapLayer.All)
         
         self.lanemarkings = LaneMarkings()
         self.vehiclemanager = VehicleManager()
-        self.imagesaver = None
-        self.labelsaver = None
-        self.save_images_to_disk = cfg.isSaving
-        self.output_directory = cfg.output_directory
+        self.imagesaver = BufferedImageSaver(f'{cfg.output_directory}/{cfg.CARLA_TOWN}/', cfg.number_of_images, IMAGE_HEIGHT, IMAGE_WIDTH, 3, '')
+        self.labelsaver = LabelSaver(cfg.train_gt)
         self.image_counter = 0
 
         if(cfg.isThirdPerson):
@@ -253,7 +254,7 @@ class CarlaGame():
                     self.lanemarkings.draw_lanes(self.client, lane_markings[i][j], lane_markings[i][j + 1], self.lanemarkings.colormap_carla[color])
     
 
-    def calculateLanes(self, new_waypoint, image_semseg):
+    def detect_lanemarkings(self, new_waypoint, image_semseg):
         """
         Calculate and show all lanes on the road.
 
@@ -297,6 +298,9 @@ class CarlaGame():
                         pygame.draw.circle(self.display, self.lanemarkings.colormap[color], lanes_list[i][j], 3, 2)
         
         self.display.blit(self.font.render('% 5d FPS ' % self.clock.get_fps(), True, (255, 255, 255)), (8, 10))
+        self.display.blit(self.font.render('Dataset % 2d ' % self.imagesaver.reset_count, True, (255, 255, 255)), (20, 30))
+        self.display.blit(self.font.render('Map: ' + cfg.CARLA_TOWN, True, (255, 255, 255)), (20, 50))
+        
         pygame.display.flip()
         
 
@@ -308,15 +312,14 @@ class CarlaGame():
                 while True:
                     if should_quit():
                         return
+                    if self.stop_saving():
+                        return
                     self.on_gameloop()
-    
+
         finally:
             print('Saving files...')
-            if self.imagesaver is not None:
-                self.imagesaver.save()
-            
-            if self.labelsaver is not None:
-                self.labelsaver.close_file()
+            self.imagesaver.save()
+            self.labelsaver.close_file()
             
             print('Destroying actors and cleaning up.')
             for actor in self.actor_list:
@@ -363,11 +366,6 @@ class CarlaGame():
         
         # Spawn five random vehicles around the car to create a realistic traffic scenario
         self.vehiclemanager.spawn_vehicles(self.world)
-        
-        # Create instances to save the images and the labels
-        if self.imagesaver is None and self.labelsaver is None and self.save_images_to_disk:
-            self.imagesaver = BufferedImageSaver(f'{self.output_directory}/{cfg.CARLA_TOWN}/', cfg.number_of_images, IMAGE_HEIGHT, IMAGE_WIDTH, 3, '')
-            self.labelsaver = LabelSaver(cfg.train_gt)
     
     
     def on_gameloop(self):
@@ -395,10 +393,10 @@ class CarlaGame():
         image_semseg = reshape_image(image_semseg)
         
         # Calculate all the lanes with the helper class 'LaneMarkings'
-        lanes_list, x_lanes_list = self.calculateLanes(new_waypoint, image_semseg)
+        lanes_list, x_lanes_list = self.detect_lanemarkings(new_waypoint, image_semseg)
         
         # Draw all 3D lanes in carla simulator
-        if(cfg.draw3DLanes):
+        if cfg.draw3DLanes:
             for i, color in enumerate(self.lanemarkings.colormap_carla):
                     self.lanemarkings.draw_lanes(self.client, lanes[i][-1], lanes[i][-2], self.lanemarkings.colormap_carla[color])
         
@@ -406,12 +404,26 @@ class CarlaGame():
         self.render_display(image_rgb, image_semseg, lanes_list)
 
         # Save images using buffered imagesaver
-        if(self.save_images_to_disk and self.vehiclemanager.junctionInSightCounter <= 0):
-            self.imagesaver.add_image(image_rgb.raw_data, 'CameraRGB')
-            self.labelsaver.add_label(x_lanes_list)
-            self.image_counter += 1
-            if(self.image_counter % cfg.images_until_respawn == 0):
-                self.reset_vehicle_position()
+        if cfg.isSaving:
+            if((not cfg.junctionMode and self.vehiclemanager.junctionInSightCounter <= 0) or cfg.junctionMode):
+                self.imagesaver.add_image(image_rgb.raw_data, 'CameraRGB')
+                self.labelsaver.add_label(x_lanes_list)
+                self.image_counter += 1
+                if(self.image_counter % cfg.images_until_respawn == 0):
+                    self.reset_vehicle_position()
+
+
+    def stop_saving(self):
+        """
+        After collecting more than n .npy files, stop saving and close the game window
+
+        Returns True if we collected more than 100 .npy files
+        """
+        if(self.imagesaver.reset_count > cfg.total_number_of_imagesets - 1):
+            print("Data collected...")
+            return True
+        
+        return False
 
 
 # ==============================================================================
@@ -427,7 +439,9 @@ class VehicleManager():
         self.vehicles_list = []
         self.vehicleswap_counter = 0
         self.indices_of_vehicles = []
-        self.junctionInSightCounter = number_of_lanepoints
+        
+        if not cfg.junctionMode:
+            self.junctionInSightCounter = number_of_lanepoints
     
     
     def detect_junction(self, waypoint_list):
@@ -441,27 +455,28 @@ class VehicleManager():
         Args:
             waypoint_list: list. List of waypoints where the vehicle will be next.
         """
-        if cfg.CARLA_TOWN == 'Town04':
-            res =[i for i,v in enumerate(waypoint_list) if len(v.next(meters_per_frame))>1]
-            if res:
-                junction_argument = res[0] < number_of_lanepoints - 15
+        if not cfg.junctionMode:
+            if cfg.CARLA_TOWN == ('Town04' or 'Town06'):
+                res =[i for i,v in enumerate(waypoint_list) if len(v.next(meters_per_frame))>1]
+                if res:
+                    junction_argument = res[0] < number_of_lanepoints - 15
+                else:
+                    junction_argument = False
+                #junction_argument = len(self.potential_new_waypoints) > 1
+                offset = 20
             else:
-                junction_argument = False
-            #junction_argument = len(self.potential_new_waypoints) > 1
-            offset = 20
-        else:
-            res =[i for i,v in enumerate(waypoint_list) if v.is_junction]
-            if res:
-                junction_argument = res[0] < number_of_lanepoints - 15
-            else:
-                junction_argument = False
+                res =[i for i,v in enumerate(waypoint_list) if v.is_junction]
+                if res:
+                    junction_argument = res[0] < number_of_lanepoints - 15
+                else:
+                    junction_argument = False
 
-            offset = 0
-        # Junctions are not included in the set of trainingsdata, so we jump over every picture where a junction is in sight 
-        if junction_argument:
-            self.junctionInSightCounter = number_of_lanepoints - 20 + offset
-        else:
-            self.junctionInSightCounter -= 1 
+                offset = 0
+            # Junctions are not included in the set of trainingsdata, so we jump over every picture where a junction is in sight 
+            if junction_argument:
+                self.junctionInSightCounter = number_of_lanepoints - 20 + offset
+            else:
+                self.junctionInSightCounter -= 1 
             
     
     def move_agent(self, vehicle, waypoint_list):
@@ -480,7 +495,7 @@ class VehicleManager():
         """
         self.deviation_counter += 0.08
         
-        if(cfg.isCenter):
+        if cfg.isCenter:
             oscillation = 0.2
             angle = 3
         else:
@@ -523,7 +538,7 @@ class VehicleManager():
         
         for i, car in enumerate(cars[:5]):
             neighbor_vehicle = world.spawn_actor(car, spawn_points[i])
-            neighbor_vehicle.set_simulate_physics(True)
+            neighbor_vehicle.set_simulate_physics(False)
             neighbor_vehicle.set_transform(self.transforms[i])
             self.vehicles_list.append(neighbor_vehicle)
             
@@ -953,7 +968,8 @@ class LaneMarkings():
 # ==============================================================================
 
 def main():
-    CarlaGame().execute()
+    carlaGame = CarlaGame()
+    carlaGame.execute()
 
 if __name__ == '__main__':
     try:

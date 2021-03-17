@@ -34,8 +34,10 @@ After generating the dataset, the images can then be converted to a video. This 
 
 ## 1. Collect rawimages from CARLA
 The script `fast_lane_detection.py` contains multiple classes, which are listed as follows:
+
 #### CarlaSyncMode
 The synchronous mode ensures, that if we have different sensors mounted on our ego vehicle or in the world, all of these sensors gather data at the exact same time. This is an important step, since we have two different cameras mounted on our ego vehicle, on the one hand we have an RGB camera sensor, that collects images from the world, and on the other hand we have a semantic segmentation camera, which is needed for filtering lanepoints on objects in the world (more on that later). It's basically really useful, when synchrony between different sensors is needed. In this mode, the server sets the speed of the overall simulation. All the data, which is coming from the client is put into a queue, and the server handles all these requests from the client. A really notably drawback from this is that the framerate drastically drops from 250+ FPS to about 20 FPS on a system with mediocre hardware (Intel i5 3240, NVidia 1060GTX, 8GB RAM). The class contains the communication and initializes the fixed time-steps and the behavior between server and client. For more information please refer to the official CARLA documentation website.
+
 #### VehicleManager
 This class manages the movement of the ego vehicle, as well as the spawning, despawning and movement of the other neighbor vehicles in the vicinity of the own car. The ego vehicle moves slightly different compared to the other cars. The oscillation (moving the vehicle from the left to the right between the lane markings) includes a zick-zack function and a rotation at the yaw-angle. Apart from the oscillation on the road, the ego vehicle uses a special system to move within the world. We decided to use a reliable system to move the own car precisely and quickly through the world. For this purpose, waypoints were an important tool. The algorithm of the movement of the ego vehicle is described as follows:
 
@@ -45,6 +47,7 @@ This class manages the movement of the ego vehicle, as well as the spawning, des
 Another really basic concept/algorithm was how to create a realistic traffic scenario with other vehicles in the vicinity of the own agent. We came up with a concept, which randomizes a lot of things, e.g. how many cars to spawn or on which position. For this purpose, a method was created to spawn 5 vehicles first. After that, the vehicles' speed have to be locked to the speed of the own agent, so it looks like the neighbor vehicles are attached to the agent vehicle. Every`frame_counter` frames, the neighbor vehicles start to mix up and randomly spawn on different positions around the own car. 
 
 Last but not least, there is a function, which is needed to detect, if a junction is ahead of our agent. This was useful to filter out junctions, we didn't want to have in our dataset. The deep neural network might not be able to learn junctions correctly and it might lead to missclassification of the lanes. 
+
 #### LaneMarkings
 This class is the most important one for lane detection. It contains functions for extracting and calculating the lane data from Carla and convert it to the correct format. The most important methods are described as follows:
 

@@ -32,7 +32,8 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.napoleon',
     'myst_parser',
-    'sphinx.ext.autosummary'
+    'sphinx.ext.autosummary',
+    'sphinx.ext.intersphinx'
 ]
 autosummary_generate = True
 napoleon_google_docstring = True
@@ -63,3 +64,9 @@ html_static_path = ['_static']
 # apply custom css
 def setup(app):
     app.add_css_file('custom.css')
+
+# cross doc links
+intersphinx_mapping = {
+    'ufld': ('https://mi-project.markus-heck.dev/ld_docs/', None),
+}
+

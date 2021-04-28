@@ -2,6 +2,8 @@
 As part of a project in our university, it was our task to implement an agent in CARLA-Simulator, which autonomously collects image and label data to generate a dataset.
 This can be used later to train a Deep Convolutional Neural Network, which is able to detect lanemarkings on a road.
 
+Our results can be found on the projects [Github page](https://glutamat42.github.io/Ultra-Fast-Lane-Detection/).
+
 ![preview image](docs/carla.png "carla")
 
 The overall project is split up into two parts:
@@ -32,7 +34,7 @@ All the raw images and labels are then converted to .jpg images and .json labels
 After generating the dataset, the images can then be converted to a video. This might be helpful, if you want to check your images and labels for errors.
 
 ## Further documentation
-For any details, please refer to the **full documentation** in the /docs directory.
+For any details, please refer to the **full documentation** in the /docs directory or [the hosted version](https://glutamat42.github.io/Ultra-Fast-Lane-Detection/carla_docs/).
 
 ## Thanks
 Thanks to [sagnibak](https://github.com/sagnibak) for his work on figuring out how to efficiently save image data in CARLA with .npy. Without his work, it would have been a lot more time consuming regarding this problem. For more information refer to his self-driving car project on Github: https://github.com/sagnibak/self-driving-car
